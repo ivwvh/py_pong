@@ -5,7 +5,7 @@ from degrees_to_velocity import degrees_to_velocity
 
 class Racket:  # класс для ракеток
     def __init__(self, x: int, player: int) -> None:
-        self.width = 20
+        self.width = 10
         self.height = 70
         self.x = x
         self.y = pygame.display.Info().current_h // 2 - self.height // 2
@@ -15,12 +15,23 @@ class Racket:  # класс для ракеток
         self.counter = 0
         self.rect = None
 
-    def draw(self, screen) -> None:
-        self.rect = pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+    def draw(self, screen: pygame.display) -> None:
+        self.rect = pygame.draw.rect(screen,
+                                     self.color,
+                                     (self.x, self.y, self.width, self.height))
 
     def move(self) -> None:
         key = pygame.key.get_pressed()
         if self.player == 1:
+            if key[pygame.K_w]:
+                if self.y > 0:
+                    print(f"Координаты игрока {self.player}: {self.y}")
+                    self.y -= self.speed
+            if key[pygame.K_s]:
+                if self.y < pygame.display.Info().current_h - self.height:
+                    print(f"Координаты игрока {self.player}: {self.y}")
+                    self.y += self.speed
+        elif self.player == 2:
             if key[pygame.K_UP]:
                 if self.y > 0:
                     self.y -= self.speed
@@ -30,50 +41,40 @@ class Racket:  # класс для ракеток
                     print(f"Координаты игрока {self.player}: {self.y}")
                     self.y += self.speed
 
-        elif self.player == 2:
-            if key[pygame.K_w]:
-                if self.y > 0:
-                    print(f"Координаты игрока {self.player}: {self.y}")
-                    self.y -= self.speed
-            if key[pygame.K_s]:
-                if self.y < pygame.display.Info().current_h - self.height:
-                    print(f"Координаты игрока {self.player}: {self.y}")
-                    self.y += self.speed
-
 
 class Ball:
     def __init__(self) -> None:
-        self.width = 5
-        self.height = 5
+        self.width = 10
+        self.height = 10
         self.x = pygame.display.Info().current_w // 2 - self.width // 2
         self.y = pygame.display.Info().current_h // 2 - self.height // 2
-        self.direction = degrees_to_velocity(130, 10)
+        self.direction = degrees_to_velocity(130, 5)
         self.speed_x = self.direction[0]
         self.speed_y = self.direction[1]
         self.color = (255, 255, 255)
         self.rect = None
+        self.iscollided = False
 
     def draw(self, screen) -> None:
-        self.rect = pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+        self.rect = pygame.draw.rect(screen,
+                                     self.color,
+                                     (self.x, self.y,
+                                      self.width, self.height))
 
-    def move(self, players):
+    def move(self, players: list):
         self.x += self.speed_x
         self.y += self.speed_y
 
         if self.x <= 0:
-            print("Гол засчитан 1")
-            self.x = pygame.display.Info().current_w // 2 - self.width // 2
-            self.y = pygame.display.Info().current_h // 2 - self.height // 2
-            players[0].counter += 1
-            print(f"{players[0].counter}")
-
-        if self.x >= pygame.display.Info().current_w - self.width:
-            print("Гол засчитан 2")
             self.x = pygame.display.Info().current_w // 2 - self.width // 2
             self.y = pygame.display.Info().current_h // 2 - self.height // 2
             players[1].counter += 1
-            print(f"{players[1].counter}")
-        
+
+        if self.x >= pygame.display.Info().current_w - self.width:
+            self.x = pygame.display.Info().current_w // 2 - self.width // 2
+            self.y = pygame.display.Info().current_h // 2 - self.height // 2
+            players[0].counter += 1
+
         if self.y < 0:
             self.speed_y *= -1
         if self.y > pygame.display.Info().current_h - self.height:
@@ -83,24 +84,29 @@ class Ball:
         players[i].counter += 1
 
 
-def collisions(ball, rackets):
-    for racket in rackets:
-        if ball.rect.colliderect(racket.rect):
-            ball.speed_x *= -1
+def collisions(ball:Ball, rackets:list):
+    if ball.rect.colliderect(rackets[0].rect) and ball.iscollided is False or ball.rect.colliderect(rackets[1].rect) and ball.iscollided is False:
+        ball.speed_x *= -1
+        ball.iscollided = True
+    elif ball.rect.left > rackets[0].rect.right and ball.rect.right < rackets[1].rect.left:  # нейтральная точка обоих ракеток
+        ball.iscollided = False
+
 
 class Counter:
     def __init__(self) -> None:
         self.score_right = pygame.font.Font(None, size=30)
         self.score_left = pygame.font.Font(None, size=30)
         self.score_right_x = pygame.display.Info().current_w * 0.25
+        self.score_y = pygame.display.Info().current_h * 0.07
         self.score_left_x = pygame.display.Info().current_w * 0.75
-        
+        self.right_img = None
+        self.left_img = None
 
     def draw(self, players):
-        self.right_img = self.score_right.render(str(players[0].counter), True, (0, 0, 0))
-        self.right_img = self.score_right.render(str(players[1].counter), True, (0, 0, 0))
-        screen.blit(self.left_img, self.score_left_x)
-        screen.blit(self.left_img, self.score_right_x)
+        self.right_img = self.score_right.render(str(players[0].counter), True, (255, 255, 255))
+        self.left_img = self.score_right.render(str(players[1].counter), True, (255,255, 255))
+        screen.blit(self.left_img, (self.score_left_x, self.score_y))
+        screen.blit(self.right_img, (self.score_right_x, self.score_y))
 
 
 screen_width = 800
