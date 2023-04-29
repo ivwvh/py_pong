@@ -8,7 +8,7 @@ from degrees_to_velocity import degrees_to_velocity
 os.chdir(pathlib.Path(__file__).parent.resolve())  # меняем CWD на папку из которой запускается файл
 
 
-class Racket:  # класс для ракеток
+class Racket:
     def __init__(self, x: int, player: int) -> None:
         """
         создает ракетку с определенными свойствами:
@@ -91,7 +91,7 @@ class Ball:
 
     def draw(self, screen: pygame.Surface) -> None:
         """
-        рисуем мячик и присваиваем получившийся Rect к переменной
+        рисует мячик и присваиваем получившийся Rect к переменной
 
         screen
         """
@@ -102,7 +102,7 @@ class Ball:
 
     def move(self, players: list) -> None:
         """
-        двигаем мячик, в цикле изменяя его x и y координату на speed мячика
+        двигает мячик, в цикле изменяя его x и y координату на speed мячика
 
         players(list) - список с игроками
         """
@@ -139,25 +139,43 @@ def racket_collisions(ball: Ball, rackets: list) -> None:
     """
     if ball.rect.colliderect(rackets[0].rect) and ball.iscollided is False or ball.rect.colliderect(rackets[1].rect) and ball.iscollided is False:
         # условие выше срабатывает только тогда когда мячик сталкивается с одной из ракеток и его переменная iscollided равна False
+
         pygame.mixer.Sound("racket.ogg").play()  # проигрываем звук столковения
         ball.iscollided = True  # изменяем значение переменной iscollided
         ball.speed_x *= -1  # изменяем скорость
+
     elif ball.rect.left > rackets[0].rect.right and ball.rect.right < rackets[1].rect.left:
         # условие выше срабатывает лишь тогда когда мячик находится на относительно нейтральном расстоянии от обоих ракеток
+
         ball.iscollided = False  # изменяем значение переменной iscollided
 
 
 class Counter:
     def __init__(self) -> None:
+        """
+        создает объекты класса Font со следующими свойствами:
+        score_right - правый счетчик
+        score_left - левый счетчик
+        self.score_right_x - положение правого счетчика по x
+        self.score_left_x - положение левого счетчика по x
+        self.score_y - положение счетика по y, является общиим для обоих счетчиков
+        self.right_img - переменная класса Surface для правого счетчика
+        self.left_img - переменная класса Surface для левого счетчика
+        """
         self.score_right = pygame.font.Font(None, size=30)
         self.score_left = pygame.font.Font(None, size=30)
         self.score_right_x = pygame.display.Info().current_w * 0.25
-        self.score_y = pygame.display.Info().current_h * 0.07
         self.score_left_x = pygame.display.Info().current_w * 0.75
+        self.score_y = pygame.display.Info().current_h * 0.07
         self.right_img = None
         self.left_img = None
 
-    def draw(self, players):
+    def draw(self, players: list) -> None:
+        """
+        создаем объекты класса Surface с счетчиками обоих игроков методом render и рисуем их на экране методом blit
+
+        players(list) - список с игроками
+        """
         self.right_img = self.score_right.render(str(players[0].counter), True, (255, 255, 255))
         self.left_img = self.score_right.render(str(players[1].counter), True, (255, 255, 255))
         screen.blit(self.left_img, (self.score_left_x, self.score_y))
