@@ -93,7 +93,7 @@ class Ball:
         """
         рисует мячик и присваиваем получившийся Rect к переменной
 
-        screen
+        screen - экран на котором нужно нарисовать ракетку
         """
         self.rect = pygame.draw.rect(screen,
                                      self.color,
