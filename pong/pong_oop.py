@@ -4,12 +4,12 @@ import os
 import pathlib
 from degrees_to_velocity import degrees_to_velocity
 
-
+# Зачем?
 os.chdir(pathlib.Path(__file__).parent.resolve())  # меняем CWD на папку из которой запускается файл
 
 
 class Racket:
-    def __init__(self, x: int, player: int) -> None:
+    def __init__(self, x: int, player: int) -> None:  # Как создать здоровую синюю ракетку, которой играет компьютер, посередине экрана?
         """
         создает ракетку с определенными свойствами:
 
@@ -20,30 +20,39 @@ class Racket:
         color(tuple) - цвет в формате RGB
         speed(int) - скорость ракетки
         player(int) - номер игрока, отвечает за управление
-        counter(int) - счетчик игрока
+        score(int) - счетчик игрока
         rect(pygame.Rect) - объект класса Rect представляющий ракетку
+        
+        Позиционирование по rect.x и rect.y не всегда удобно, посмотрите на остальные атрибуты прямоугольника https://vk.com/ddtinfo?w=wall-170034757_207
+        Игрока лучше сделать из Surface, снять с него прямогуольник методом get_rect и нарисовать методом blit
         """
         self.width = 10
         self.height = 70
         self.x = x
-        self.y = pygame.display.Info().current_h // 2 - self.height // 2
+        self.y = pygame.display.Info().current_h // 2 - self.height // 2  # Вы часто создаёте этот экземпляр дальше в коде. Почему бы не сделать это один раз, а потом пользоваться результатом?
         self.color = (255, 255, 255)
         self.speed = 10
         self.player = player
-        self.counter = 0
+        self.score = 0
         self.rect = None
 
     def draw(self, screen: pygame.Surface) -> None:
         """
         рисует ракетку и присваиваем получившийся объект класса Rect к переменной
+        
         """
         self.rect = pygame.draw.rect(screen,
                                      self.color,
-                                     (self.x, self.y, self.width, self.height))
+                                     (self.x, self.y, self.width, self.height)
+                                     )
 
     def move(self) -> None:
         """
         изменяет положение ракетки меняя её y координату
+        
+        DRY!
+        Лучше вместо self.player сделать self.key_up и self.key_down
+        А self.is_automatic может контролировать управление игроком/компом
         """
         key = pygame.key.get_pressed()
         if self.player == 1:
@@ -63,7 +72,7 @@ class Racket:
 
 
 class Ball:
-    def __init__(self) -> None:
+    def __init__(self) -> None:  # Как сделать большой жёлтый мячик в правом углу?
         """
         создает мячик с определенными свойствами:
 
@@ -77,6 +86,9 @@ class Ball:
         color(tuple) - цвет в формате RGB
         rect(pygame.Rect) - объект класса Rect представляющий мячик
         iscollided(bool) - булево значение отвчеющие столкнулся ли мяч с рактекой
+        
+        Если мы хотим показать тип, то обычно пишем его не в скобках, а так width:int
+        Здесь лучше использовать velocity вместо speed
         """
         self.width = 8
         self.height = 8
@@ -109,17 +121,18 @@ class Ball:
         self.x += self.speed_x
         self.y += self.speed_y
 
+        # Я бы вынес голы отсюда в логику класса Game
         if self.x <= 0:  # при ударе о левую стену
             self.x = pygame.display.Info().current_w // 2 - self.width // 2   # центрируем мячик по x
             self.y = pygame.display.Info().current_h // 2 - self.height // 2  # центрируем мячик по y
             pygame.mixer.Sound("goal.ogg").play()  # проигрываем звук удара
-            players[1].counter += 1  # засчитываем очко игроку
+            players[1].score += 1  # засчитываем очко игроку
 
         if self.x >= pygame.display.Info().current_w - self.width:  # при ударе о правую стену
             self.x = pygame.display.Info().current_w // 2 - self.width // 2
             self.y = pygame.display.Info().current_h // 2 - self.height // 2
             pygame.mixer.Sound("goal.ogg").play()
-            players[0].counter += 1
+            players[0].score += 1
 
         if self.y < 0:  # при ударе о верхнюю стену
             self.speed_y *= -1  # изменяем скорость
@@ -136,8 +149,11 @@ def racket_collisions(ball: Ball, rackets: list) -> None:
 
     ball(Ball) - мячик
     rackets(list) - список с игроками
+    
+    Такое ощущение, что эта функция хочет быть частью класса Ball
+    ball.iscollided дублирует стандартный метод colliderect, подумайте ещё, как прекратить коллизию сразу после изменеения скорости мяча
     """
-    if ball.rect.colliderect(rackets[0].rect) and ball.iscollided is False or ball.rect.colliderect(rackets[1].rect) and ball.iscollided is False:
+    if ball.rect.colliderect(rackets[0].rect) and ball.iscollided is False or ball.rect.colliderect(rackets[1].rect) and ball.iscollided is False:  # О-о-о-очень длинно и непонятно. Is - плохая проверка для bool
         # условие выше срабатывает только тогда когда мячик сталкивается с одной из ракеток и его переменная iscollided равна False
 
         pygame.mixer.Sound("racket.ogg").play()  # проигрываем звук столковения
@@ -146,12 +162,12 @@ def racket_collisions(ball: Ball, rackets: list) -> None:
 
     elif ball.rect.left > rackets[0].rect.right and ball.rect.right < rackets[1].rect.left:
         # условие выше срабатывает лишь тогда когда мячик находится на относительно нейтральном расстоянии от обоих ракеток
-
+        # Не понял камент выше
         ball.iscollided = False  # изменяем значение переменной iscollided
 
 
 class Counter:
-    def __init__(self) -> None:
+    def __init__(self) -> None:  # Как создать маленький красный счётчик для голов второго игрока в углу?
         """
         создает объекты класса Font со следующими свойствами:
         score_right - правый счетчик
@@ -161,9 +177,12 @@ class Counter:
         self.score_y - положение счетика по y, является общиим для обоих счетчиков
         self.right_img - переменная класса Surface для правого счетчика
         self.left_img - переменная класса Surface для левого счетчика
+        
+        У вас два счётчика score_right и score_left пытаются уместиться в один класс.
+        Сделайте их САМОСТОЯТЕЛЬНЫМИ экземплярами
         """
-        self.score_right = pygame.font.Font(None, size=30)
-        self.score_left = pygame.font.Font(None, size=30)
+        self.score_right = pygame.font.Font(size=30)
+        self.score_left = pygame.font.Font(size=30)
         self.score_right_x = pygame.display.Info().current_w * 0.25
         self.score_left_x = pygame.display.Info().current_w * 0.75
         self.score_y = pygame.display.Info().current_h * 0.07
@@ -175,13 +194,14 @@ class Counter:
         создаем объекты класса Surface с счетчиками обоих игроков методом render и рисуем их на экране методом blit
 
         players(list) - список с игроками
-        """
-        self.right_img = self.score_right.render(str(players[0].counter), True, (255, 255, 255))
-        self.left_img = self.score_right.render(str(players[1].counter), True, (255, 255, 255))
+        """ 
+        self.right_img = self.score_right.render(str(players[0].score), True, (255, 255, 255))  # вынесите цвета в константы!
+        self.left_img = self.score_right.render(str(players[1].score), True, (255, 255, 255))
         screen.blit(self.left_img, (self.score_left_x, self.score_y))
         screen.blit(self.right_img, (self.score_right_x, self.score_y))
 
 
+# Остальное явно просится в класс Game
 screen_width = 800
 screen_height = 600
 screen = pygame.display.set_mode((screen_width, screen_height))
@@ -200,6 +220,7 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+
     screen.fill((0, 0, 0))
     ball.draw(screen)
     racket.draw(screen)
