@@ -3,7 +3,8 @@ from sys import exit
 from degrees_to_velocity import degrees_to_velocity
 
 WHITE = (255, 255, 255)
-FPS = 60
+FPS = 250
+
 
 class Game:
     def __init__(self) -> None:
@@ -20,8 +21,8 @@ class Game:
         self.screen_rect = self.screen.get_rect()
         self.player_1 = Racket(
             screen_rect=self.screen_rect,
-            center=(self.screen_rect.width * 0.1,self.screen_rect.centery),
-            keys=(pygame.K_w, pygame.K_s))
+            center=(self.screen_rect.width * 0.1, self.screen_rect.centery),
+            move_keys=(pygame.K_w, pygame.K_s))
         self.player_2 = Racket(
             screen_rect=self.screen_rect,
             center=(self.screen_rect.width * 0.9, self.screen_rect.centery),
@@ -32,9 +33,7 @@ class Game:
             center_x=self.screen_rect.centerx,
             center_y=self.screen_rect.centery)
 
-        
-
-        self.paddles = pygame.sprite.Group() # создаем объект класс Group
+        self.paddles = pygame.sprite.Group()  # создаем объект класс Group
         self.balls = pygame.sprite.Group()
         self.paddles.add(self.player_1)
         self.paddles.add(self.player_2)
@@ -43,7 +42,7 @@ class Game:
 
     def move_players(self):
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
+        if keys[self.player_1.keys[0]]:
             self.player_1.rect.centery -= self.player_1.speed
         if keys[pygame.K_s]:
             self.player_1.rect.centery += self.player_1.speed
@@ -88,6 +87,8 @@ class Game:
             if key[pygame.K_ESCAPE]:
                 game = False
 
+            self.player_1.move(self.ball.rect.y)
+            self.player_2.move(self.ball.rect.y)
             self.collisions()
             self.ball.move()
             self.paddles.update()
@@ -101,11 +102,6 @@ class Game:
 class Racket(pygame.sprite.Sprite):
     """
     ракетка
-
-    TODO:
-    размеры,
-    клавишы,
-    автомат
     """
     def __init__(
             self,
@@ -113,10 +109,9 @@ class Racket(pygame.sprite.Sprite):
             color=WHITE,
             center=(0, 0),
             size=None,
-            keys=(pygame.K_UP, pygame.K_DOWN),
+            move_keys=(pygame.K_UP, pygame.K_DOWN),
             speed=30,
-            isautomatic=False,
-            ball_y = None
+            isautomatic=False
             ) -> None:
         super().__init__()
         self.speed = 3
@@ -129,18 +124,30 @@ class Racket(pygame.sprite.Sprite):
         self.image.fill(color)
         self.rect = self.image.get_rect()
         self.rect.center = center
-        speed = speed
-        self.keys = keys
+        self.move_keys = move_keys
 
     def update(self):
         if not self.isautomatic:
             keys = pygame.key.get_pressed()
-            if keys[self.keys[0]]:
+            if keys[self.move_keys[0]]:
                 self.rect.y -= self.speed
-            if keys[self.keys[1]]:
+            if keys[self.move_keys[1]]:
                 self.rect.y += self.speed
         else:
             pass
+
+    def move(self, ball_y: int):
+        if not self.isautomatic:
+            keys = pygame.key.get_pressed()
+            if keys[self.move_keys[0]]:
+                self.rect.centery -= 1
+            elif keys[self.move_keys[0]]:
+                self.rect.centery += 1
+        else:
+            if self.rect.centery > ball_y:
+                self.rect.centery -= self.speed
+            elif self.rect.centery < ball_y:
+                self.rect.centery += self.speed
 
 
 class Ball(pygame.sprite.Sprite):
