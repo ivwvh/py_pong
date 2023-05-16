@@ -1,9 +1,10 @@
 import pygame
 from sys import exit
 from degrees_to_velocity import degrees_to_velocity
-
+from math import sin, cos, radians
+from random import randint, choice
 WHITE = (255, 255, 255)
-FPS = 250
+FPS = 60
 
 
 class Game:
@@ -28,16 +29,13 @@ class Game:
             center=(self.screen_rect.width * 0.9, self.screen_rect.centery),
             isautomatic=True)
         self.ball = Ball(
-            screen_rect=self.screen_rect,
-            color=WHITE,
-            center_x=self.screen_rect.centerx,
-            center_y=self.screen_rect.centery)
+            screen_rect=self.screen_rect)
 
         self.paddles = pygame.sprite.Group()  # создаем объект класс Group
-        self.balls = pygame.sprite.Group()
+        self.ball_group = pygame.sprite.Group()
         self.paddles.add(self.player_1)
         self.paddles.add(self.player_2)
-        self.balls.add(self.ball)
+        self.ball_group.add(self.ball)
         self.clock.tick(FPS)
 
     def move_players(self):
@@ -62,20 +60,20 @@ class Game:
             self.player_2.rect.bottom = self.screen_rect.bottom
 
         if self.ball.rect.bottom >= self.screen_rect.bottom:
-            self.ball.speed_y *= -1
+            self.ball.direction *= -1
         if self.ball.rect.top <= self.screen_rect.top:
-            self.ball.speed_y *= -1
+            self.ball.direction *= -1
         if self.ball.rect.right >= self.screen_rect.right:
-            self.ball.rect.center = self.screen_rect.center
+            self.ball.throw_in()
         if self.ball.rect.left <= self.screen_rect.left:
-            self.ball.rect.center = self.screen_rect.center
+            self.ball.throw_in()
 
         if self.ball.rect.colliderect(self.player_1.rect):
-            self.ball.rect.centerx += self.ball.speed_x * -1
-            self.ball.speed_x *= -1
+            self.ball.rect.centerx += self.ball.vel_x * -1
+            self.ball.direction *= -1
         if self.ball.rect.colliderect(self.player_2.rect):
-            self.ball.rect.centerx += self.ball.speed_x * -1
-            self.ball.speed_x *= -1
+            self.ball.rect.centerx += self.ball.vel_x * -1
+            self.ball.direction *= -1
 
     def main_loop(self):
         game = True
@@ -90,11 +88,11 @@ class Game:
             self.player_1.move(self.ball.rect.y)
             self.player_2.move(self.ball.rect.y)
             self.collisions()
-            self.ball.move()
-            self.paddles.update()
+            self.paddles.update(self.ball.rect.y)
+            self.ball_group.update()
             self.screen.fill((0, 0, 0))
             self.paddles.draw(self.screen)
-            self.balls.draw(self.screen)
+            self.ball_group.draw(self.screen)
             pygame.display.flip()
             self.clock.tick(FPS)
 
@@ -126,23 +124,13 @@ class Racket(pygame.sprite.Sprite):
         self.rect.center = center
         self.move_keys = move_keys
 
-    def update(self):
+    def update(self, ball_y):
         if not self.isautomatic:
             keys = pygame.key.get_pressed()
             if keys[self.move_keys[0]]:
                 self.rect.y -= self.speed
             if keys[self.move_keys[1]]:
                 self.rect.y += self.speed
-        else:
-            pass
-
-    def move(self, ball_y: int):
-        if not self.isautomatic:
-            keys = pygame.key.get_pressed()
-            if keys[self.move_keys[0]]:
-                self.rect.centery -= 1
-            elif keys[self.move_keys[0]]:
-                self.rect.centery += 1
         else:
             if self.rect.centery > ball_y:
                 self.rect.centery -= self.speed
@@ -153,28 +141,46 @@ class Racket(pygame.sprite.Sprite):
 class Ball(pygame.sprite.Sprite):
     def __init__(
             self,
-            screen_rect,
-            color,
-            center_x,
-            center_y
+            screen_rect:pygame.Rect,
+            color=WHITE,
+            center = None,
+            size=None,
+            speed=10,
+            direction=250,
+            vel_x=0,
+            vel_y=0,
             ) -> None:
         super().__init__()
-        self.direction = degrees_to_velocity(320, 2.5)
-        self.speed_x, self.speed_y = self.direction
-        self.width = 10
-        self.height = 10
-        self.image = pygame.Surface(
-            (self.width, self.height)
-        )
+        self.direction = direction
+        self.speed = speed
+        self.vel_x = vel_x
+        self.vel_y = vel_y
+        self.screen_rect = screen_rect
+        if not size:
+            size = (screen_rect.width * 0.01, screen_rect.width * 0.01)
+        self.image = pygame.Surface(size)
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        self.rect.centerx = center_x
-        self.rect.centery = center_y
+        if not center:
+            self.rect.center = screen_rect.center
+        
+    def update(self):
+        self.vel_x = sin(radians(self.direction)) * self.speed
+        self.vel_y = cos(radians(self.direction)) * self.speed * -1
+        self.rect.x += self.vel_x
+        self.rect.y += self.vel_y
+        self.bounce()
 
-    def move(self):
-        self.rect.centerx, self.rect.centery = self.rect.centerx + self.speed_x, self.rect.centery + self.speed_y
+    def throw_in(self):
+        self.rect.center = self.screen_rect.center
+        self.direction = choice((randint(45, 135), randint(225, 315)))
 
-
+    def bounce(self):
+        if self.rect.top < self.screen_rect.top:
+            self.direction *= -1
+        elif self.rect.top > self.screen_rect.top:
+            self.direction *= -1
+            self.direction += 180
 """class Counter():
     def __init__(self, size, screen_info, counter) -> None:
         self.size = size
