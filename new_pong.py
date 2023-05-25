@@ -1,10 +1,9 @@
 import pygame
 from sys import exit
 from degrees_to_velocity import degrees_to_velocity
-from math import sin, cos, radians
-from random import randint, choice
+from random import choice, randint
 WHITE = (255, 255, 255)
-FPS = 60
+FPS = 250
 
 
 class Game:
@@ -27,27 +26,23 @@ class Game:
         self.player_2 = Racket(
             screen_rect=self.screen_rect,
             center=(self.screen_rect.width * 0.9, self.screen_rect.centery),
-            isautomatic=True)
+            isautomatic=0)
         self.ball = Ball(
-            screen_rect=self.screen_rect)
-
-        self.paddles = pygame.sprite.Group()  # создаем объект класс Group
-        self.ball_group = pygame.sprite.Group()
+            screen_rect=self.screen_rect,
+            color=WHITE,
+            center_x=self.screen_rect.centerx,
+            center_y=self.screen_rect.centery)
+        self.scoreboard_1 = Scoreboard(x=self.screen_width * 0.25,
+                                       y=self.screen_height * 0.05)
+        self.scoreboard_2 = Scoreboard(x=self.screen_width * 0.75,
+                                       y=self.screen_height * 0.05)
+        self.jugde = Jugde(self.screen, self.ball)
+        self.paddles = pygame.sprite.Group()
+        self.balls = pygame.sprite.Group()
         self.paddles.add(self.player_1)
         self.paddles.add(self.player_2)
-        self.ball_group.add(self.ball)
+        self.balls.add(self.ball)
         self.clock.tick(FPS)
-
-    def move_players(self):
-        keys = pygame.key.get_pressed()
-        if keys[self.player_1.keys[0]]:
-            self.player_1.rect.centery -= self.player_1.speed
-        if keys[pygame.K_s]:
-            self.player_1.rect.centery += self.player_1.speed
-        if keys[pygame.K_UP]:
-            self.player_2.rect.centery -= self.player_2.speed
-        if keys[pygame.K_DOWN]:
-            self.player_2.rect.centery += self.player_2.speed
 
     def collisions(self):
         if self.player_1.rect.top <= self.screen_rect.top:
@@ -60,20 +55,22 @@ class Game:
             self.player_2.rect.bottom = self.screen_rect.bottom
 
         if self.ball.rect.bottom >= self.screen_rect.bottom:
-            self.ball.direction *= -1
+            self.ball.direction[1] *= -1
         if self.ball.rect.top <= self.screen_rect.top:
-            self.ball.direction *= -1
+            self.ball.direction[1] *= -1
         if self.ball.rect.right >= self.screen_rect.right:
-            self.ball.throw_in()
+            self.jugde.throw_in()
+            self.jugde.update_scoreboard(self.scoreboard_1)
         if self.ball.rect.left <= self.screen_rect.left:
-            self.ball.throw_in()
+            self.jugde.throw_in()
+            self.jugde.update_scoreboard(self.scoreboard_2)
 
         if self.ball.rect.colliderect(self.player_1.rect):
-            self.ball.rect.centerx += self.ball.vel_x * -1
-            self.ball.direction *= -1
+            self.ball.rect.centerx += self.ball.direction[0] * -1
+            self.ball.direction[0] *= -1
         if self.ball.rect.colliderect(self.player_2.rect):
-            self.ball.rect.centerx += self.ball.vel_x * -1
-            self.ball.direction *= -1
+            self.ball.rect.centerx += self.ball.direction[0] * -1
+            self.ball.direction[0] *= -1
 
     def main_loop(self):
         game = True
@@ -88,11 +85,13 @@ class Game:
             self.player_1.move(self.ball.rect.y)
             self.player_2.move(self.ball.rect.y)
             self.collisions()
-            self.paddles.update(self.ball.rect.y)
-            self.ball_group.update()
+            self.ball.move()
+            self.paddles.update()
             self.screen.fill((0, 0, 0))
             self.paddles.draw(self.screen)
-            self.ball_group.draw(self.screen)
+            self.balls.draw(self.screen)
+            self.scoreboard_1.draw(self.screen)
+            self.scoreboard_2.draw(self.screen)
             pygame.display.flip()
             self.clock.tick(FPS)
 
@@ -124,13 +123,23 @@ class Racket(pygame.sprite.Sprite):
         self.rect.center = center
         self.move_keys = move_keys
 
-    def update(self, ball_y):
+    def update(self):
         if not self.isautomatic:
             keys = pygame.key.get_pressed()
             if keys[self.move_keys[0]]:
                 self.rect.y -= self.speed
             if keys[self.move_keys[1]]:
                 self.rect.y += self.speed
+        else:
+            pass
+
+    def move(self, ball_y: int):
+        if not self.isautomatic:
+            keys = pygame.key.get_pressed()
+            if keys[self.move_keys[0]]:
+                self.rect.centery -= 1
+            elif keys[self.move_keys[0]]:
+                self.rect.centery += 1
         else:
             if self.rect.centery > ball_y:
                 self.rect.centery -= self.speed
@@ -141,57 +150,54 @@ class Racket(pygame.sprite.Sprite):
 class Ball(pygame.sprite.Sprite):
     def __init__(
             self,
-            screen_rect:pygame.Rect,
-            color=WHITE,
-            center = None,
-            size=None,
-            speed=10,
-            direction=250,
-            vel_x=0,
-            vel_y=0,
+            screen_rect,
+            color,
+            center_x,
+            center_y
             ) -> None:
         super().__init__()
-        self.direction = direction
-        self.speed = speed
-        self.vel_x = vel_x
-        self.vel_y = vel_y
-        self.screen_rect = screen_rect
-        if not size:
-            size = (screen_rect.width * 0.01, screen_rect.width * 0.01)
-        self.image = pygame.Surface(size)
+        degrees = 320
+        self.speed = 2.5
+        self.direction = list(degrees_to_velocity(degrees, self.speed))
+        self.width = 10
+        self.height = 10
+        self.image = pygame.Surface(
+            (self.width, self.height)
+        )
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        if not center:
-            self.rect.center = screen_rect.center
-        
-    def update(self):
-        self.vel_x = sin(radians(self.direction)) * self.speed
-        self.vel_y = cos(radians(self.direction)) * self.speed * -1
-        self.rect.x += self.vel_x
-        self.rect.y += self.vel_y
-        self.bounce()
+        self.rect.centerx = center_x
+        self.rect.centery = center_y
+
+    def move(self):
+        self.rect.centerx, self.rect.centery = self.rect.centerx + self.direction[0], self.rect.centery + self.direction[1]
+
+
+class Scoreboard:
+    def __init__(self, x=0, y=0, counter=0, color=WHITE) -> None:
+        self.x = x
+        self.y = y
+        self.counter = counter
+        self.color = color
+
+    def draw(self, screen: pygame.Surface):
+        font = pygame.font.Font("py_pong/assets/font.ttf",size=50)
+        img = font.render(str(self.counter), False, self.color)
+        screen.blit(img, (self.x, self.y))
+
+
+class Jugde:
+    def __init__(self, screen: pygame.Surface, ball: Ball) -> None:
+        self.screen = screen
+        self.ball = ball
 
     def throw_in(self):
-        self.rect.center = self.screen_rect.center
-        self.direction = choice((randint(45, 135), randint(225, 315)))
+        self.ball.rect.center = self.screen.get_rect().center
+        self.ball.direction = list(degrees_to_velocity(choice((randint(45, 135), randint(225, 315))), self.ball.speed))
 
-    def bounce(self):
-        if self.rect.top < self.screen_rect.top:
-            self.direction *= -1
-        elif self.rect.top > self.screen_rect.top:
-            self.direction *= -1
-            self.direction += 180
-"""class Counter():
-    def __init__(self, size, screen_info, counter) -> None:
-        self.size = size
-        self.score = pygame.font.Font(size=self.size)
-        self.score_x = screen_info.current_w * 0.5
-        self.score_y = screen_info.current_h * 0.5
-        self.counter = 0
-        self.img = self.score.render(str(counter), True, (255, 255, 255))
-
-    def draw(self, screen):
-        screen.blit(self.img, (self.score_x, self.score_y))"""
+    def update_scoreboard(self, scoreboard: Scoreboard):
+        scoreboard.counter += 1
+        scoreboard.draw(self.screen)
 
 
 game = Game()
