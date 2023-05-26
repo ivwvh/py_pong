@@ -10,7 +10,6 @@ class Game:
     def __init__(self) -> None:
         pygame.init()
         pygame.font.init()
-        WHITE = (255, 255, 255)
         self.clock = pygame.time.Clock()
         self.screen_info = pygame.display.Info()
         self.screen_width = self.screen_info.current_w
@@ -22,11 +21,12 @@ class Game:
         self.player_1 = Racket(
             screen_rect=self.screen_rect,
             center=(self.screen_rect.width * 0.1, self.screen_rect.centery),
-            move_keys=(pygame.K_w, pygame.K_s))
+            move_keys=(pygame.K_w, pygame.K_s),
+            isautomatic=1)
         self.player_2 = Racket(
             screen_rect=self.screen_rect,
             center=(self.screen_rect.width * 0.9, self.screen_rect.centery),
-            isautomatic=0)
+            isautomatic=1)
         self.ball = Ball(
             screen_rect=self.screen_rect,
             color=WHITE,
@@ -90,6 +90,11 @@ class Game:
             self.screen.fill((0, 0, 0))
             self.paddles.draw(self.screen)
             self.balls.draw(self.screen)
+            pygame.draw.line(self.screen,
+                             WHITE,
+                             self.screen_rect.midtop,
+                             self.screen_rect.midbottom
+                             )
             self.scoreboard_1.draw(self.screen)
             self.scoreboard_2.draw(self.screen)
             pygame.display.flip()
@@ -181,7 +186,7 @@ class Scoreboard:
         self.color = color
 
     def draw(self, screen: pygame.Surface):
-        font = pygame.font.Font("py_pong/assets/font.ttf",size=50)
+        font = pygame.font.Font(size=50)
         img = font.render(str(self.counter), False, self.color)
         screen.blit(img, (self.x, self.y))
 
